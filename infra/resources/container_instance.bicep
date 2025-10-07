@@ -130,7 +130,7 @@ resource container_instance 'Microsoft.ContainerInstance/containerGroups@2024-10
           command: [
             '/bin/bash'
             '-c'
-            'chmod +x mnt/repo/infra/scripts/run_container_app.sh && bash mnt/repo/infra/scripts/run_container_app.sh'
+            'chmod +x /mnt/repo/infra/scripts/run_container_app.sh && bash /mnt/repo/infra/scripts/run_container_app.sh'
           ]
           environmentVariables: [
             {
