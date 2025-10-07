@@ -61,7 +61,7 @@ param router_type string = 'ORCHESTRATION'
 param app_mode string = 'SEMANTIC_KERNEL'
 param image string = 'mcr.microsoft.com/azure-cli'
 param port int = 80
-param repository string = 'https://https://github.com/amineo15/ob-chatbot'
+param repository string = 'https://github.com/amineo15/ob-chatbot'
  
 // Managed Identity:
 @description('Name of managed identity to use for Container Apps.')
