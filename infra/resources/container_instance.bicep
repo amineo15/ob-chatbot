@@ -60,8 +60,8 @@ param router_type string = 'ORCHESTRATION'
 ])
 param app_mode string = 'SEMANTIC_KERNEL'
 param image string = 'mcr.microsoft.com/azure-cli'
-param port int = 8000
-param repository string = 'https://github.com/Azure-Samples/Azure-Language-OpenAI-Conversational-Agent-Accelerator'
+param port int = 80
+param repository string = 'https://https://github.com/amineo15/ob-chatbot'
  
 // Managed Identity:
 @description('Name of managed identity to use for Container Apps.')
@@ -82,7 +82,7 @@ resource container_instance 'Microsoft.ContainerInstance/containerGroups@2024-10
     }
   }
   properties: {
-    restartPolicy: 'Never'
+    restartPolicy: 'Always'
     volumes: [
       {
         name: 'repo'
