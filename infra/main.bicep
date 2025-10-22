@@ -1,4 +1,3 @@
-// ========== main.bicep ========== //
 targetScope = 'resourceGroup'
 
 // GPT model:
@@ -39,6 +38,15 @@ param embedding_deployment_capacity int
 ])
 param embedding_deployment_type string
 
+@description('Environment (ex: dev, prod).')
+param environment string = 'dev'
+
+@description('Owner of the managed identity and role assignments.')
+param owner string = 'your-owner-email@engie.com'
+
+@description('Date of next managed identity review (ISO format).')
+param reviewDate string = '2024-12-31'
+
 // Variables:
 var suffix = uniqueString(subscription().id, resourceGroup().id, resourceGroup().location)
 
@@ -47,6 +55,9 @@ module managed_identity 'resources/managed_identity.bicep' = {
   name: 'deploy_managed_identity'
   params: {
     suffix: suffix
+    environment: environment
+    owner: owner
+    reviewDate: reviewDate
   }
 }
 
@@ -89,7 +100,27 @@ module role_assignments 'resources/role_assignments.bicep' = {
   }
 }
 
-//----------- Deploy App -----------//
+module network 'resources/network.bicep' = {
+  name: 'deploy_network'
+  params: {
+    suffix: suffix
+    location: resourceGroup().location
+    flowLogStorageAccountName: storage_account.outputs.name
+    ddosPlanId: '<ddos-plan-resource-id>' // à renseigner
+  }
+}
+
+module app_gateway 'resources/app_gateway.bicep' = {
+  name: 'deploy_app_gateway'
+  params: {
+    suffix: suffix
+    location: resourceGroup().location
+    publicSubnetId: network.outputs.publicSubnetId
+    backendFqdn: '<backend-fqdn>' // à renseigner ou à récupérer dynamiquement
+    keyVaultCertSecretId: '<keyvault-cert-secret-id>' // à renseigner
+  }
+}
+
 module container_instance 'resources/container_instance.bicep' = {
   name: 'deploy_container_group'
   params: {
@@ -107,10 +138,12 @@ module container_instance 'resources/container_instance.bicep' = {
     embedding_model_name: ai_foundry.outputs.embedding_model_name
     storage_account_connection_string: storage_account.outputs.connection_string
     storage_account_name: storage_account.outputs.name
+    privateSubnetId: network.outputs.privateSubnetId
   }
   dependsOn: [
     role_assignments
+    network
   ]
 }
 
-output WEB_APP_URL string = container_instance.outputs.fqdn
+output WEB_APP_URL string = app_gateway.outputs.appGatewayId

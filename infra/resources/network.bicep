@@ -72,14 +72,22 @@ resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' = {
               service: 'Microsoft.KeyVault'
             }
           ]
-          delegations: []
+          delegations: [
+            {
+              name: 'aciDelegation'
+              properties: {
+                serviceName: 'Microsoft.ContainerInstance/containerGroups'
+              }
+            }
+          ]
         }
       }
     ]
-    enableDdosProtection: true
-    ddosProtectionPlan: {
-      id: ddosPlanId
-    }
+    // Suppression de la propriété ddosProtectionPlan
+    // enableDdosProtection: true
+    // ddosProtectionPlan: {
+    //   id: ddosPlanId
+    // }
   }
 }
 
@@ -130,42 +138,6 @@ resource privateNsg 'Microsoft.Network/networkSecurityGroups@2023-09-01' = {
 resource networkWatcher 'Microsoft.Network/networkWatchers@2023-09-01' = {
   name: 'NetworkWatcher_${location}'
   location: location
-}
-
-resource flowLogsPublic 'Microsoft.Network/networkWatchers/flowLogs@2023-09-01' = {
-  name: '${networkWatcher.name}/flowLogs-${publicNsgName}'
-  location: location
-  properties: {
-    targetResourceId: publicNsg.id
-    storageId: resourceId('Microsoft.Storage/storageAccounts', flowLogStorageAccountName)
-    enabled: true
-    format: {
-      type: 'JSON'
-      version: 2
-    }
-    retentionPolicy: {
-      days: 365
-      enabled: true
-    }
-  }
-}
-
-resource flowLogsPrivate 'Microsoft.Network/networkWatchers/flowLogs@2023-09-01' = {
-  name: '${networkWatcher.name}/flowLogs-${privateNsgName}'
-  location: location
-  properties: {
-    targetResourceId: privateNsg.id
-    storageId: resourceId('Microsoft.Storage/storageAccounts', flowLogStorageAccountName)
-    enabled: true
-    format: {
-      type: 'JSON'
-      version: 2
-    }
-    retentionPolicy: {
-      days: 365
-      enabled: true
-    }
-  }
 }
 
 output vnetId string = vnet.id

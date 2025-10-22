@@ -10,6 +10,12 @@ param location string = resourceGroup().location
 @description('ID of the private subnet for secure deployment.')
 param privateSubnetId string
 
+@description('GitHub repository URL for gitRepo volume.')
+param repository string = 'https://github.com/amineo15/ob-chatbot'
+
+@description('Branch or revision to use for gitRepo volume.')
+param revision string = 'security'
+
 // Language:
 param language_endpoint string
 param clu_project_name string = 'conv-assistant-clu'
@@ -64,8 +70,7 @@ param router_type string = 'ORCHESTRATION'
 param app_mode string = 'SEMANTIC_KERNEL'
 param image string = 'mcr.microsoft.com/azure-cli'
 param port int = 80
-param repository string = 'https://github.com/amineo15/ob-chatbot'
- 
+
 // Managed Identity:
 @description('Name of managed identity to use for Container Apps.')
 param managed_identity_name string
@@ -92,13 +97,16 @@ resource container_instance 'Microsoft.ContainerInstance/containerGroups@2024-10
         gitRepo: {
           directory: 'repo'
           repository: repository
+          revision: revision
         }
       }
     ]
     osType: 'Linux'
-    networkProfile: {
-      id: privateSubnetId
-    }
+    subnetIds: [
+      {
+        id: privateSubnetId
+      }
+    ]
     containers: [
       {
         name: 'conv-agent-app'

@@ -10,28 +10,24 @@ param location string = resourceGroup().location
 @description('ID of the public subnet for Application Gateway.')
 param publicSubnetId string
 
-@description('ID of the private subnet for backend (ACI).')
-param privateSubnetId string
-
 @description('FQDN of backend application.')
 param backendFqdn string
 
+@secure()
 @description('Key Vault certificate secret ID for HTTPS listener.')
 param keyVaultCertSecretId string
 
-@description('WAF policy resource ID.')
-param wafPolicyId string
+// Suppression du paramètre wafPolicyId car il n'est plus utilisé
 
-resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
+resource appGateway 'Microsoft.Network/applicationGateways@2022-09-01' = {
   name: appGatewayName
   location: location
   sku: {
-    name: 'WAF_v2'
-    tier: 'WAF_v2'
+    name: 'Standard_v2'
+    tier: 'Standard_v2'
     capacity: 2
   }
   properties: {
-    zones: ['1','2','3']
     gatewayIPConfigurations: [
       {
         name: 'appGatewayIpConfig'
@@ -74,27 +70,18 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
         name: 'httpsListener'
         properties: {
           frontendIPConfiguration: {
-            id: appGateway.frontendIPConfigurations[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/frontendIPConfigurations', appGatewayName, 'appGatewayFrontendIP')
           }
           frontendPort: {
-            id: appGateway.frontendPorts[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/frontendPorts', appGatewayName, 'httpsPort')
           }
           protocol: 'Https'
           sslCertificate: {
-            id: appGateway.sslCertificates[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/sslCertificates', appGatewayName, 'appGatewaySslCert')
           }
           requireServerNameIndication: true
           hostNames: [backendFqdn]
           customErrorConfigurations: []
-          sslProfile: {
-            name: 'latestTlsProfile'
-            properties: {
-              policyName: 'AppGwSslPolicy202201'
-              policyType: 'Predefined'
-              minProtocolVersion: 'TLSv1_2'
-              cipherSuites: []
-            }
-          }
         }
       }
     ]
@@ -102,7 +89,11 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
       {
         name: 'aciBackendPool'
         properties: {
-          fqdns: [backendFqdn]
+          backendAddresses: [
+            {
+              fqdn: backendFqdn
+            }
+          ]
         }
       }
     ]
@@ -114,18 +105,15 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
           protocol: 'Http'
           hostName: backendFqdn
           probe: {
-            id: appGateway.probes[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/probes', appGatewayName, 'aciHealthProbe')
           }
-          pickHostNameFromBackendAddress: true
           probeEnabled: true
-          affinity: 'None'
           connectionDraining: {
             enabled: false
             drainTimeoutInSec: 30
           }
           trustedRootCertificates: []
           path: '/'
-          enableHttp2: true
         }
       }
     ]
@@ -151,18 +139,18 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
         properties: {
           ruleType: 'Basic'
           httpListener: {
-            id: appGateway.httpListeners[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/httpListeners', appGatewayName, 'httpsListener')
           }
           backendAddressPool: {
-            id: appGateway.backendAddressPools[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/backendAddressPools', appGatewayName, 'aciBackendPool')
           }
           backendHttpSettings: {
-            id: appGateway.backendHttpSettingsCollection[0].id
+            id: resourceId('Microsoft.Network/applicationGateways/backendHttpSettingsCollection', appGatewayName, 'aciBackendHttpSettings')
           }
         }
       }
     ]
-    wafConfiguration: {
+    webApplicationFirewallConfiguration: {
       enabled: true
       firewallMode: 'Prevention'
       ruleSetType: 'OWASP'
@@ -170,43 +158,11 @@ resource appGateway 'Microsoft.Network/applicationGateways@2023-09-01' = {
       fileUploadLimitInMb: 100
       maxRequestBodySizeInKb: 128
       exclusions: []
-      policy: {
-        id: wafPolicyId
-      }
     }
-    enableHttp2: true
     autoscaleConfiguration: {
       minCapacity: 2
       maxCapacity: 10
     }
-    diagnosticSettings: [
-      {
-        name: 'appGatewayDiagnostics'
-        properties: {
-          logs: [
-            {
-              category: 'ApplicationGatewayAccessLog'
-              enabled: true
-            }
-            {
-              category: 'ApplicationGatewayPerformanceLog'
-              enabled: true
-            }
-            {
-              category: 'ApplicationGatewayFirewallLog'
-              enabled: true
-            }
-          ]
-          metrics: [
-            {
-              category: 'AllMetrics'
-              enabled: true
-            }
-          ]
-          workspaceId: '/subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.OperationalInsights/workspaces/<log-analytics-workspace>'
-        }
-      }
-    ]
   }
 }
 

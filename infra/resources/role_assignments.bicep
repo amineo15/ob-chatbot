@@ -10,12 +10,6 @@ param ai_foundry_name string
 @description('Name of Search Service resource.')
 param search_service_name string
 
-@description('Responsible for access review.')
-param accessReviewOwner string
-
-@description('Date of next access review (ISO format).')
-param accessReviewDate string
-
 //----------- Managed Identity Resource -----------//
 resource managed_identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: managed_identity_name
@@ -26,8 +20,17 @@ resource storage_account 'Microsoft.Storage/storageAccounts@2023-05-01' existing
   name: storage_account_name
 }
 
+@description('Built-in Storage Blob Data Contributor role')
+resource storage_blob_data_contributor_role 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: 'ba92f5b4-2d11-453d-a403-e96b0029c9fe'
+}
+
+@description('Built-in Storage Blob Data Reader role')
+resource storage_blob_data_reader_role 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1'
+}
+
 // PRINCIPAL: Managed Identity
-// Usage: Data access only. No admin rights. Reviewed by accessReviewOwner on accessReviewDate.
 resource mi_storage_blob_data_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storage_account.id, managed_identity.id, storage_blob_data_contributor_role.id)
   scope: storage_account
@@ -35,12 +38,10 @@ resource mi_storage_blob_data_contributor_role_assignment 'Microsoft.Authorizati
     principalId: managed_identity.properties.principalId
     roleDefinitionId: storage_blob_data_contributor_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Data contributor only. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
 // PRINCIPAL: Search service
-// Usage: Data read only. Reviewed by accessReviewOwner on accessReviewDate.
 resource search_storage_blob_data_reader_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(storage_account.id, search_service.id, storage_blob_data_reader_role.id)
   scope: storage_account
@@ -48,7 +49,6 @@ resource search_storage_blob_data_reader_role_assignment 'Microsoft.Authorizatio
     principalId: search_service.identity.principalId
     roleDefinitionId: storage_blob_data_reader_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Data reader only. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
@@ -57,8 +57,17 @@ resource search_service 'Microsoft.Search/searchServices@2023-11-01' existing = 
   name: search_service_name
 }
 
+@description('Built-in Search Service Contributor role')
+resource search_service_contributor_role 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  name: '7ca78c08-252a-4471-8644-bb5ff32d4ba0'
+}
+
+@description('Built-in Search Index Data Contributor role')
+resource search_index_data_contributor_role 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: '8ebe5a00-799e-43f5-93ac-243d3dce84a7'
+}
+
 // PRINCIPAL: Managed Identity
-// Usage: Index data contributor. Reviewed by accessReviewOwner on accessReviewDate.
 resource mi_search_index_data_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(search_service.id, managed_identity.id, search_index_data_contributor_role.id)
   scope: search_service
@@ -66,12 +75,10 @@ resource mi_search_index_data_contributor_role_assignment 'Microsoft.Authorizati
     principalId: managed_identity.properties.principalId
     roleDefinitionId: search_index_data_contributor_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Index data contributor. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
 // PRINCIPAL: Managed Identity
-// Usage: Service contributor. Reviewed by accessReviewOwner on accessReviewDate.
 resource mi_search_service_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(search_service.id, managed_identity.id, search_service_contributor_role.id)
   scope: search_service
@@ -79,12 +86,10 @@ resource mi_search_service_contributor_role_assignment 'Microsoft.Authorization/
     principalId: managed_identity.properties.principalId
     roleDefinitionId: search_service_contributor_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Service contributor. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
 // PRINCIPAL: AI Foundry (OpenAI)
-// Usage: Index data contributor. Reviewed by accessReviewOwner on accessReviewDate.
 resource foundry_search_index_data_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(search_service.id, ai_foundry.id, search_index_data_contributor_role.id)
   scope: search_service
@@ -92,7 +97,6 @@ resource foundry_search_index_data_contributor_role_assignment 'Microsoft.Author
     principalId: ai_foundry.identity.principalId
     roleDefinitionId: search_index_data_contributor_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Index data contributor. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
@@ -101,8 +105,17 @@ resource ai_foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' ex
   name: ai_foundry_name
 }
 
+@description('Built-in Cognitive Services OpenAI Contributor role')
+resource cognitive_services_openai_contributor_role 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: 'a001fd3d-188f-4b5d-821b-7da978bf7442'
+}
+
+@description('Built-in Cognitive Services Language Owner role')
+resource cognitive_services_language_owner_role 'Microsoft.Authorization/roleDefinitions@2022-04-01' existing = {
+  name: 'f07febfe-79bc-46b1-8b37-790e26e6e498'
+}
+
 // PRINCIPAL: Managed Identity
-// Usage: OpenAI contributor. Reviewed by accessReviewOwner on accessReviewDate.
 resource mi_cognitive_services_openai_contributor_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(ai_foundry.id, managed_identity.id, cognitive_services_openai_contributor_role.id)
   scope: ai_foundry
@@ -110,12 +123,10 @@ resource mi_cognitive_services_openai_contributor_role_assignment 'Microsoft.Aut
     principalId: managed_identity.properties.principalId
     roleDefinitionId: cognitive_services_openai_contributor_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: OpenAI contributor. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
 // PRINCIPAL: Managed Identity
-// Usage: Language owner. Reviewed by accessReviewOwner on accessReviewDate.
 resource mi_cognitive_services_language_owner_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(ai_foundry.id, managed_identity.id, cognitive_services_language_owner_role.id)
   scope: ai_foundry
@@ -123,11 +134,16 @@ resource mi_cognitive_services_language_owner_role_assignment 'Microsoft.Authori
     principalId: managed_identity.properties.principalId
     roleDefinitionId: cognitive_services_language_owner_role.id
     principalType: 'ServicePrincipal'
-    description: 'ENGIE: Language owner. Owner: ${accessReviewOwner}. Next review: ${accessReviewDate}.'
   }
 }
 
 // PRINCIPAL: AI Foundry (OpenAI)
-// Usage: Language owner. Reviewed by accessReviewOwner on accessReviewDate.
 resource foundry_cognitive_services_language_owner_role_assignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(ai_foundry.id, ai_foundry.id, cognitive
+  name: guid(ai_foundry.id, ai_foundry.id, cognitive_services_language_owner_role.id)
+  scope: ai_foundry
+  properties: {
+    principalId: ai_foundry.identity.principalId
+    roleDefinitionId: cognitive_services_language_owner_role.id
+    principalType: 'ServicePrincipal'
+  }
+}
